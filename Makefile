@@ -1,3 +1,5 @@
+ALL_OBJ = main.o utilities.o test_convo.o 
+EXECS = burgers test_convo
 OBJECTS_MAIN = main.o utilities.o 
 OBJECTS_CONVO = test_convo.o utilities.o
 #SOURCES = main.cpp utilities.cpp utilities.h 
@@ -13,7 +15,6 @@ burgers: ${OBJECTS_MAIN}
 test_convo: ${OBJECTS_CONVO}
 	${CC} ${OBJECTS_CONVO}  ${LFLAGS} -o test_convo
 	
-
 main.o: main.cpp utilities.h
 	${CC} ${CFLAGS} main.cpp utilities.h	
 
@@ -27,7 +28,7 @@ test_convo.o: test_convo.cpp utilities.h
 #	${CC} ${CFLAGS} test3.cpp utilities.h
 
 clean:
-	rm -r ${OBJECTS}
+	rm -r ${ALL_OBJ} ${EXECS} 
 	
 run:
 	./burgers
