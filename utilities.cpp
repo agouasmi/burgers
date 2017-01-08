@@ -8,6 +8,7 @@ fftw_plan build_plan_forward(int N, double* U, std::complex<double>* UF){
 									U,
 									reinterpret_cast<fftw_complex*> (UF),
 									FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
+	fftw_forget_wisdom();
 	
 	return plan_fwd;
 	
@@ -19,6 +20,7 @@ fftw_plan build_plan_inverse(int N, std::complex<double>* UF, double* U){
 									reinterpret_cast<fftw_complex*> (UF), 
 									U, 
 									FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);	
+	fftw_forget_wisdom();
 	
 	return plan_inv;
 	
@@ -59,6 +61,40 @@ void square(double* U2, double* U, int N){
 	}
 }
 
+void convo_23(std::complex<double> * target, std::complex<double> * UF, int Nf){
+
+	int N = 2*(Nf-1);
+	
+	std::complex<double> ZERO(0.,0.);
+	std::complex<double> UF_23[Nf];
+	double U_23[N];
+	
+	copy_complex(UF_23,UF,Nf);
+	
+	int N_23 = 2*Nf/3+1;
+	
+	/* remove the last 1/3 of the information to avoid aliasing*/
+	int i;
+	for (i = N_23; i < Nf; i++){
+		UF_23[i] = ZERO;
+	}
+	
+	fftw_plan plan_fwd    = build_plan_forward(N, U_23, UF_23);
+	fftw_plan plan_inv    = build_plan_inverse(N, UF_23, U_23);
+	
+	/* compute the corresponding physical signal, don't need to scale */
+	fft_inverse(U_23,UF_23,N,plan_inv);
+	
+	/* square it */
+	square(U_23,N); 
+	
+	/* compute the Fourier transform of that and assign it to target*/
+	fft_forward(target,U_23,N,plan_fwd);
+	
+	fftw_destroy_plan(plan_fwd); fftw_destroy_plan(plan_inv);
+}
+
+
 void convo(std::complex<double> * target, std::complex<double> * UF, int Nf){
     /* Computes the convolution and puts the result in target */
 	/* If you always apply it to the same structure in your code, it's gonna be fine. otherwise...*/
@@ -66,7 +102,7 @@ void convo(std::complex<double> * target, std::complex<double> * UF, int Nf){
 	int i;
 	
 	/* Pad the damn fourier vector*/
-	int Nf_pad = int (1.5*Nf);
+	int Nf_pad = int (Nf);
 	int N_pad  = 2*(Nf_pad-1);
 	
 	/* Temporary structures */
@@ -90,8 +126,8 @@ void convo(std::complex<double> * target, std::complex<double> * UF, int Nf){
 	
 	/* put it into target*/
 	copy_complex(target,UF_pad,Nf);	
-	cout << "convolution: \n";
-	show_modes(5,target);
+	//cout << "convolution: \n";
+	//show_modes(5,target);
 	
 	fftw_destroy_plan(plan_pad_fwd); fftw_destroy_plan(plan_pad_inv);
 	
@@ -102,7 +138,7 @@ void assemble_rhs(std::complex<double> * RHS, std::complex<double> * UF, int Nf,
 	/* Assembles the right hand side term of Burgers in Fourier Space */
   
 	/* First put in the convection term*/
-	convo(RHS, UF, Nf);
+	convo_23(RHS, UF, Nf);
 	
 	//show_modes(5,RHS);
 	
@@ -229,7 +265,7 @@ void write_complex(string filename, std::complex<double>* data, int N){
 	
 }
 
-void write_real(std::string filename, double* data, double* X, int N){
+void write_real(string filename, double* data, double* X, int N){
 	
 	ofstream fout;
 	fout.open(filename);
@@ -241,52 +277,3 @@ void write_real(std::string filename, double* data, double* X, int N){
 
 
 /* -------------------- THRASH ------------------------ */
-
-
-
-/*
-void convo2(std::complex<double> * target, std::complex<double> * UF, int Nf, fftw_plan pad_fwd, fftw_plan pad_inv){
-    // Computes the convolution and puts the result in target 
-    // Version 2 
-	
-	int i;
-	//cout << " Computing the convolution \n \n";
-	
-	// Pad the damn fourier vector
-	int Nf_pad = int (1.5*Nf);
-	int N_pad  = 2*(Nf_pad-1);
-	
-	std::complex<double> UF_pad[Nf_pad];
-	double               U_pad[N_pad];
-	
-	/* Do the padding... basically copy UF into a larger one
-	cblas_zcopy(Nf,UF,1,UF_pad,1);	
-
-	/* compute the corresponding physical signal, don't need to scale 
-	fft_inverse(U_pad,UF_pad,N_pad,pad_inv);
-	
-	/* square it 
-	square(U_pad,N_pad); 
-	
-	/* compute the Fourier transform of that squared signal
-	fft_forward(UF_pad,U_pad,N_pad,pad_fwd);
-	
-	/* put it into target
-	cblas_zcopy(Nf,UF_pad,1,target,1);	
-	
-} */
-
-/*
-void convolution(std::complex<double> * RHS, double * U, int N, fftw_plan plan_fwd){
-
-	int k; int Nf = int(N/2+1); 
-	double U2[N];
-	square(U2,U,N);
-	
-	fft_forward(RHS, U2, N, plan_fwd);
-	
-	/*for (k = 0; k < Nf; k++){
-		std::complex<double> ik2(0.,-(double) k / 2.); 
-		RHS[k] *= ik2;	
-	}
-}*/

@@ -21,6 +21,7 @@ void scale(std::complex<double>* signal, const int length, const void* fact);
 void scale(double* signal, const int N, double fact);
 void add(std::complex<double> * UF, std::complex<double> dt, std::complex<double> * RHS, int Nf);
 void convo(std::complex<double> * target, std::complex<double> * UF, int Nf);
+void convo_23(std::complex<double> * target, std::complex<double> * UF, int Nf);
 double norm(double* U, int N);
 double norm(std::complex<double> * UF, int Nf);
 
